@@ -22,7 +22,6 @@ ControlJS - a JavaScript module for loading scripts faster.
 *******************************************************************************/
 
 var CJS = CJS || {};
-var wp_import = wp_import || {};
 
 CJS.start = function() {
 	CJS.init();
@@ -437,7 +436,6 @@ CJS.getAttribute = function(elem, name) {
 
 
 // Wrapper for addEventListener and attachEvent.
-/*
 CJS.addHandler = function(elem, sType, fn, capture) {
 	capture = (capture) ? true : false;
 	if (elem.addEventListener) {
@@ -456,7 +454,6 @@ CJS.addHandler = function(elem, sType, fn, capture) {
 		}
 	}
 };
-*/
 
 
 // Dynamically define dprint debug logging function.
@@ -537,9 +534,4 @@ CJS.docwriteScript = function(textScript) {
 
 
 
-//CJS.start();
-
-wp_import.findInlineScripts = CJS.start;
-wp_import.processInlineScripts = CJS.processScripts;
-wp_import.downloadScript = CJS.downloadScript;
-wp_import.execScript = CJS.execScript;
+CJS.start();
