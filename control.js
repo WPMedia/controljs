@@ -393,7 +393,7 @@ CJS.eval = function(code) {
 CJS.init = function() {
 	CJS.bInited = true;  // don't init twice
 	
-	//CJS.isDebug = window.location.href.match("cjsdebug=true") ? true : false;
+	CJS.isDebug = window.location.href.match("wpidebug=true") ? true : false;
 
 	// If defer is true then scripts aren't loaded until the onload event.
 	CJS.defer = ( "undefined" === typeof(CJS.defer) ? true : CJS.defer );
@@ -457,7 +457,6 @@ CJS.addHandler = function(elem, sType, fn, capture) {
 
 
 // Dynamically define dprint debug logging function.
-/*
 if ( "undefined" != typeof(console) && "undefined" != typeof(console.log) ) {
 	CJS.dprint = function(msg) {
 		if(CJS.isDebug) {
@@ -466,9 +465,8 @@ if ( "undefined" != typeof(console) && "undefined" != typeof(console.log) ) {
 	};
 }
 else {
-*/
 	CJS.dprint = function(msg) {};
-//}
+}
 
 
 //
