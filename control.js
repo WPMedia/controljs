@@ -21,6 +21,12 @@ ControlJS - a JavaScript module for loading scripts faster.
   - discussion list: http://groups.google.com/group/controljs
 *******************************************************************************/
 
+/*******************************************************************************
+MODIFICATION NOTES
+ - Script has been heavily modified for use in wp_import project.
+ - script from Methode is in this project, named control-mod.js
+*******************************************************************************/
+
 var CJS = CJS || {};
 
 CJS.start = function() {
@@ -51,7 +57,6 @@ CJS.start = function() {
 		CJS.processScripts();
 	}*/
 };
-
 
 // Find all scripts with a "text/wpi" type.
 CJS.findScripts = function(rootElem) {
@@ -90,72 +95,81 @@ CJS.rescan = function(rootElem) {
 // DOWNLOAD PHASE
 //
 
-// Find all scripts with a "data-wp_import" attribute.
-/*
-CJS.downloadScripts = function() {
-	var len = CJS.aScripts.length;
-	for ( var i = 0; i < len; i++ ) {
-		var script = CJS.aScripts[i];
-		var src = CJS.getAttribute(script, "data-wp_import");
-		if ( src ) {
-			CJS.downloadScript(src);
-		}
-	}
-};
-*/
-
-
 // Download a script in such a way that it's not executed immediately.
-CJS.downloadScript = function(url, callback) {
-	if(CJS.hStarted[url]) {
+CJS.downloadScript = function(url, callback, options) {
+	if (CJS.hStarted[url]) {
 		CJS.dprint("already downloaded (and therefore skipping) " + url);
 		return;
 	}
 	CJS.hStarted[url] = true;
 	CJS.dprint("downloading " + url);
 
-	if ( CJS.bIE || CJS.bOpera ) {
-		CJS.downloadScriptImage(url, callback);
+	if (CJS.bIE || CJS.bOpera) {
+		return CJS.downloadScriptImage(url, callback, options);
 	}
 	else {
-		CJS.downloadScriptObject(url, callback);
+		return CJS.downloadScriptObject(url, callback, options);
 	}
 };
 
 
 // Download a script as an image.
 // This puts it in the browser's cache, but doesn't execute it.
-CJS.downloadScriptImage = function(url, callback) {
+CJS.downloadScriptImage = function(url, callback, options) {
+	var d = $.Deferred();
 	var img = new Image();
-	img.onload = function() { CJS.onloadCallback(url); if (!!callback) { callback(url); } };
-	img.onerror = function() { CJS.onloadCallback(url); if (!!callback) { callback(url); } }; // Chrome does onerror (not onload).
+	img.onload = function() {
+		d.resolve(url,options);
+		CJS.onloadCallback(url);
+		if (!!callback) {
+			callback(url);
+		}
+	};
+	img.onerror = function() {
+		d.fail(url,options);
+		CJS.onloadCallback(url);
+		if (!!callback) {
+			callback(url);
+		}
+	}; // Chrome does onerror (not onload).
 	img.src = url;
+	return d.promise();
 };
 
 
 // Download a script as an object.
 // This puts it in the browser's cache, but doesn't execute it.
 // Based on http://www.phpied.com/preload-cssjavascript-without-execution/
-CJS.downloadScriptObject = function(url, callback) {
-	if ( "undefined" === typeof(document.body) || ! document.body ) {
-		// we need body for appending objects
-		setTimeout("CJS.downloadScriptObject('" + url + "')", 50);
-		return;
-	}
+CJS.downloadScriptObject = function(url, callback, options) {
 
+	var d = $.Deferred();
 	var obj = document.createElement('object');
 	obj.data = url;
-	
-	if(!CJS.bIE ) {
-		obj.width  = 0;
+
+	if (!CJS.bIE) {
+		obj.width = 0;
 		obj.height = 0;
-	} else {
+	}
+	else {
 		obj.style.display = "none";
 	}
-	obj.onload = function() { CJS.onloadCallback(url); if (!!callback) { callback(url); } };
-	obj.onerror = function() { CJS.onloadCallback(url); if (!!callback) { callback(url); } };
+	obj.onload = function() {
+		d.resolve(url,options);
+		CJS.onloadCallback(url);
+		if (!!callback) {
+			callback(url);
+		}
+	};
+	obj.onerror = function() {
+		d.fail(url,options);
+		CJS.onloadCallback(url);
+		if (!!callback) {
+			callback(url);
+		}
+	};
 	//CJS.dprint("downloadScriptObject: appending " + url);
 	document.body.appendChild(obj);
+	return d.promise();
 };
 
 
@@ -168,19 +182,19 @@ CJS.onloadCallback = function(url) {
 CJS.execCallback = function(url) {
 	CJS.dprint("execCallback: " + url);
 
-	if ( 0 === CJS.aExecs.length ) {
+	if (0 === CJS.aExecs.length) {
 		CJS.dprint("ERROR: We finished executing a script but the exec queue is empty: " + url);
 		return;
 	}
 
-	if ( url == CJS.aExecs[0][0] ) {
-		CJS.aExecs.splice(0, 1);  // remove leading URL
+	if (url == CJS.aExecs[0][0]) {
+		CJS.aExecs.splice(0, 1); // remove leading URL
 	}
 	else {
 		CJS.dprint("ERROR: We finished executing a script that wasn't on the queue: " + url);
 	}
 
-	if ( CJS.aExecs.length ) {
+	if (CJS.aExecs.length) {
 		// execute the next script on the queue
 		CJS.execScript(CJS.aExecs[0][0], CJS.aExecs[0][1]);
 	}
@@ -201,58 +215,58 @@ CJS.processScripts = function() {
 
 CJS.processNextScript = function() {
 	//CJS.dprint("processNextScript: enter");
-	if ( CJS.aScripts.length ) {
+	if (CJS.aScripts.length) {
 		var script = CJS.aScripts[0];
-		CJS.curScript = script;  // for docwrite
+		CJS.curScript = script; // for docwrite
 
 		var src = CJS.getAttribute(script, "data-wp_import");
 		//var cjsexec = CJS.getAttribute(script, "data-cjsexec") || CJS.getAttribute(script, "cjsexec"); // backward compatible to earlier "cjsexec" attribute
-		if ( src ) {
+		if (src) {
 			/*
 			// External Script
 			if ( "false" === cjsexec ) {
-				CJS.aScripts.splice(0, 1);   // remove leading script
-				setTimeout(CJS.processNextScript, 0);
+			  CJS.aScripts.splice(0, 1);   // remove leading script
+			  setTimeout(CJS.processNextScript, 0);
 			}
 			else if ( CJS.hLoaded[src] ) {
-				// Done downloading.
-				if(!CJS.hExec[src]) {
-					CJS.processExternalScript(script, CJS.processNextScript);
-					CJS.hExec[src] = true;
-					CJS.aScripts.splice(0, 1);   // remove leading script
-				}
-				else {
-					CJS.aScripts.splice(0, 1);   // remove leading script
-					setTimeout(CJS.processNextScript,0);
-				}
-				// Race condition! Need to call processNextScript from the onload handler 
-				// of the script added down inside processExternalScript. (Notice the 
-				// callback added above when calling processExternalScript.)
-				//setTimeout(CJS.processNextScript, 0);
+			  // Done downloading.
+			  if(!CJS.hExec[src]) {
+				CJS.processExternalScript(script, CJS.processNextScript);
+				CJS.hExec[src] = true;
+				CJS.aScripts.splice(0, 1);   // remove leading script
+			  }
+			  else {
+				CJS.aScripts.splice(0, 1);   // remove leading script
+				setTimeout(CJS.processNextScript,0);
+			  }
+			  // Race condition! Need to call processNextScript from the onload handler 
+			  // of the script added down inside processExternalScript. (Notice the 
+			  // callback added above when calling processExternalScript.)
+			  //setTimeout(CJS.processNextScript, 0);
 			}
 			else {
-				// Still downloading.
-				CJS.dprint("processNextScript: waiting for script " + src);
-				if ( "undefined" === typeof(script.startwait) ) {
-					script.startwait = Number(new Date());  // start time
-				}
-				var delta = Number(new Date()) - script.startwait;
-				if ( delta < CJS.maxWait ) {
-					// try again
-					setTimeout(CJS.processNextScript, CJS.waitival);
-				}
-				else {
-					CJS.dprint("CJS: There was an error loading script: " + src);
-					CJS.aScripts.splice(0,1);
-					setTimeout(CJS.processNextScript,0);
-				}
+			  // Still downloading.
+			  CJS.dprint("processNextScript: waiting for script " + src);
+			  if ( "undefined" === typeof(script.startwait) ) {
+				script.startwait = Number(new Date());  // start time
+			  }
+			  var delta = Number(new Date()) - script.startwait;
+			  if ( delta < CJS.maxWait ) {
+				// try again
+				setTimeout(CJS.processNextScript, CJS.waitival);
+			  }
+			  else {
+				CJS.dprint("CJS: There was an error loading script: " + src);
+				CJS.aScripts.splice(0,1);
+				setTimeout(CJS.processNextScript,0);
+			  }
 			}
 			*/
 		}
 		else {
 			// Inline Script
 			CJS.processInlineScript(script);
-			CJS.aScripts.splice(0, 1);   // remove leading script
+			CJS.aScripts.splice(0, 1); // remove leading script
 			setTimeout(CJS.processNextScript, 0);
 		}
 
@@ -263,7 +277,7 @@ CJS.processNextScript = function() {
 	// Because control.js loads async, it's possible for findScripts to be
 	// be called before all SCRIPT tags have been created.
 	CJS.findScripts();
-	if ( CJS.aScripts.length ) {
+	if (CJS.aScripts.length) {
 		//CJS.downloadScripts();
 		setTimeout(CJS.processNextScript, 0);
 		return;
@@ -272,22 +286,16 @@ CJS.processNextScript = function() {
 
 	CJS.dprint("DONE processing scripts");
 
-	/*
-	TODO - We can try something like this to re-fire the window load event.
-	var eventObj = document.createEvent("HTMLEvents");
-	eventObj.initEvent("load", true, true);
-	window.dispatchEvent(eventObj);
-    */
 };
 
 
 // Eval the code in an inlined script.
 CJS.processInlineScript = function(script) {
-	CJS.docwriteOrig = document.write;  // keep a reference to the original function
-	document.write = CJS.docwrite;	  // override document.write
-	
+	CJS.docwriteOrig = document.write; // keep a reference to the original function
+	document.write = CJS.docwrite; // override document.write
+
 	//CJS.dprint("processInlineScript: enter");
-	CJS.curScript = script;  // for docwrite
+	CJS.curScript = script; // for docwrite
 
 	var code = script.text;
 	CJS.dprint("processInlineScript: processing script code: " + code.substring(0, 64));
@@ -298,27 +306,15 @@ CJS.processInlineScript = function(script) {
 };
 
 
-// If downloaded then add the external script as a real script DOM element.
-/*
-CJS.processExternalScript = function(script, callback) {
-	//CJS.dprint("processExternalScript: enter");
-
-	var src = CJS.getAttribute(script, "data-wp_import");
-	CJS.dprint("processExternalScript: processing script " + src);
-	CJS.execScript(src, callback);
-};
-*/
-
 // Insert a script DOM element.
 // Presumably the src has already been downloaded and is in the cache.
 CJS.execScript = function(src, onload) {
 	CJS.dprint("execScript: " + src);
-
-	if ( 0 === CJS.aExecs.length ) {
+	var d = $.Deferred();
+	if (0 === CJS.aExecs.length) {
 		// Add this to the queue and continue on to execute it.
 		CJS.aExecs[CJS.aExecs.length] = [src, onload];
-	}
-	else if ( src != CJS.aExecs[0][0] ) {
+	} else if (src != CJS.aExecs[0][0]) {
 		// If there's an execution queue and this SRC isn't first, try later.
 		CJS.dprint("execScript: queueing for later: " + src);
 		CJS.aExecs[CJS.aExecs.length] = [src, onload];
@@ -326,37 +322,40 @@ CJS.execScript = function(src, onload) {
 	}
 
 	// convert the onload parameter from function or string into a function
-	var fonload = ( function(ponload) {
-		switch ( typeof(ponload) ) { 
-			case "string": 
-			  ponload = new Function(ponload);
-			  break;	 
-			case "function": 
-			  // ponload is already a function
-			  break; 
-			default: 
-			  ponload = new Function();
+	var fonload = (function(ponload) {
+		switch (typeof(ponload)) {
+			case "string":
+				ponload = new Function(ponload);
+				break;
+			case "function":
+				// ponload is already a function
+				break;
+			default:
+				ponload = new Function();
 		}
 		return ponload;
-		
+
 	})(onload);
 
 	// single function that works with onload and onreadystatechange
 	var func = function() {
-		if ( this.readyState && this.readyState != "complete" && this.readyState != "loaded" ) {
-			return; 
+		if (this.readyState && this.readyState != "complete" && this.readyState != "loaded") {
+			return;
 		}
-		CJS.execCallback(src); 
+		d.resolve(src);
+		CJS.execCallback(src);
 		this.onload = this.onreadystatechange = null; // ensure callback is only called once
-		fonload(); 
+		fonload();
 	};
 
 	// Add a SCRIPT element pointing to the (already cached) src so the JS gets executed.
 	var se = document.createElement('script');
-	se.onload = se.onreadystatechange = func;  // set this BEFORE setting .src
+	se.onload = se.onreadystatechange = func; // set this BEFORE setting .src
 	se.src = src;
 	var s1 = document.getElementsByTagName('script')[0];
 	s1.parentNode.insertBefore(se, s1);
+
+	return d.promise();
 };
 
 
