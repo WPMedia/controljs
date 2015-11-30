@@ -126,7 +126,7 @@ CJS.downloadScriptImage = function(url, callback, options) {
 		}
 	};
 	img.onerror = function() {
-		d.fail(url,options);
+		d.reject(url,options);
 		CJS.onloadCallback(url);
 		if (!!callback) {
 			callback(url);
@@ -161,7 +161,7 @@ CJS.downloadScriptObject = function(url, callback, options) {
 		}
 	};
 	obj.onerror = function() {
-		d.fail(url,options);
+		d.reject(url,options);
 		CJS.onloadCallback(url);
 		if (!!callback) {
 			callback(url);
