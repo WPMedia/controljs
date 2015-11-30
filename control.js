@@ -153,22 +153,26 @@ CJS.downloadScriptObject = function(url, callback, options) {
 	else {
 		obj.style.display = "none";
 	}
-	obj.onload = function() {
+
+	//CJS.dprint("downloadScriptObject: appending " + url);
+	var domNode = document.body.appendChild(obj);
+
+	domNode.addEventListener('load', function() {
 		d.resolve(url,options);
 		CJS.onloadCallback(url);
 		if (!!callback) {
 			callback(url);
 		}
-	};
-	obj.onerror = function() {
+	});
+
+	domNode.addEventListener('error', function() {
 		d.reject(url,options);
 		CJS.onloadCallback(url);
 		if (!!callback) {
 			callback(url);
 		}
-	};
-	//CJS.dprint("downloadScriptObject: appending " + url);
-	document.body.appendChild(obj);
+	});
+
 	return d.promise();
 };
 
