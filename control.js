@@ -145,14 +145,8 @@ CJS.downloadScriptObject = function(url, callback, options) {
 	var d = $.Deferred();
 	var obj = document.createElement('object');
 	obj.data = url;
-
-	if (!CJS.bIE) {
-		obj.width = 0;
-		obj.height = 0;
-	}
-	else {
-		obj.style.display = "none";
-	}
+	obj.width = 0;
+	obj.height = 0;
 
 	//CJS.dprint("downloadScriptObject: appending " + url);
 	var domNode = document.body.appendChild(obj);
