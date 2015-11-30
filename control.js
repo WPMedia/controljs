@@ -149,23 +149,24 @@ CJS.downloadScriptObject = function(url, callback, options) {
 	obj.height = 0;
 
 	//CJS.dprint("downloadScriptObject: appending " + url);
-	var domNode = document.body.appendChild(obj);
-
-	domNode.addEventListener('load', function() {
+	
+	obj.onload = function() {
 		d.resolve(url,options);
 		CJS.onloadCallback(url);
 		if (!!callback) {
 			callback(url);
 		}
-	});
+	};
 
-	domNode.addEventListener('error', function() {
+	obj.onerror = function() {
 		d.reject(url,options);
 		CJS.onloadCallback(url);
 		if (!!callback) {
 			callback(url);
 		}
-	});
+	};
+
+	document.body.appendChild(obj);
 
 	return d.promise();
 };
